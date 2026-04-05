@@ -1,0 +1,14 @@
+{
+    "tag": "contract_info",
+    "log": {
+        "level": "info",
+        "log_path": "/logs"
+    },
+    "redis": {
+        "host": "localhost",
+        "port": 9379,
+        "password": "refZa2KcTj$QjyXk"
+    },
+    "exchangeList": ["BINANCE", "GATEIO", "BYBIT", "OKX"],
+    "needMagnifyNum": 1
+}
