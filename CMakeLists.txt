@@ -73,6 +73,7 @@ link_libraries(
         tbb 
         stdc++fs 
         fmt
+        simdjson
 )
 
 add_executable(ContractInfo

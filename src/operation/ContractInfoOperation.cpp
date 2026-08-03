@@ -63,9 +63,14 @@ void ContractInfoOperation::updateExchangeInfo() {
             mAllInfo.insert(mInfo.begin(), mInfo.end());
         }
 
+    #ifdef USE_INFO_SHM
+        BaseInfo::flushAllToShm(mAllInfo, Config::instance());
+    #else
+
         const std::string& allInfoKey = crypto::get_all_instuments_key();
         const std::string& allInfoValue = mapToJsonArray(mAllInfo);
         redisClient->set(allInfoKey, allInfoValue);
+    #endif
         std::this_thread::sleep_for(std::chrono::seconds(60));
     }
 
