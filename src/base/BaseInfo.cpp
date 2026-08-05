@@ -125,7 +125,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
         }
 
 
-        const bool is_stale = ec == boost::asio::error::eof || boost::asio::error::connection_reset || boost::asio::error::broken_pipe || boost::asio::error::end_of_stream;
+        const bool is_stale = ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset || ec == boost::asio::error::broken_pipe || ec == boost::beast::http::error::end_of_stream;
         if (attempt == 0 && is_stale) {
             LOG_INFO("syncGet {} {} got '{}' (likely stale keep-alive), waiting for RestClient reconnect + retry once", host, target, ec.message());
             
@@ -135,7 +135,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
                     break;
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(100);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             continue;
         }
