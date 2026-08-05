@@ -11,11 +11,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -fPIC -DABI -DNDEBUG -DOPENBLAS  -O3
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-
+option(USE_INFO_SHM "publish instrument into via share memory instead of redis" OFF)
 if(USE_INFO_SHM)
     add_definitions(-DUSE_INFO_SHM)
-#else()
-#endif()
+    message(STATUS "USE_IFNO_SHM = ON (SHM writer enabled)")
+else()
+    message(STATUS "USE_IFNO_SHM = OFF (redis writer)")
+endif()
 
 # 读取整个文件
 file(READ /inc/version.inc FILE_CONTENT)
