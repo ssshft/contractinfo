@@ -10,6 +10,13 @@ BaseInfo::BaseInfo(RedisClient* client, Config* conf) {
     needMagnifyNum = std::stoi(magnifNumStr);
 }
 
+BaseInfo::BaseInfo(Config* conf) {
+    config = conf;
+    std::string magnifNumStr = "";
+    config->get_string("needMagnifyNum", magnifNumStr);
+    needMagnifyNum = std::stoi(magnifNumStr);
+}
+
 BaseInfo::~BaseInfo() {
     // mClients 的 shared_ptr 会依次析构, RestClient::dtor 内会 stop worker + drain pending
 }
@@ -19,23 +26,19 @@ void BaseInfo::saveData() {
     // SHM 模式: 单个 BaseInfo 不 publish, 由 ContractInfoOperation 收集所有 exchange
     // 数据后统一调 flushAllToShm() 一次原子写。
     // 这里只做本地保存 (mInstrumentInfo 已经在 updateInstrumentInfo 里存好), no-op。
-    (void)0;
 #else
     // Redis 模式: 逐条写 (旧逻辑)
     for (auto iter = mInstrumentInfo.begin(); iter != mInstrumentInfo.end(); ++iter) {
         auto& info = iter->second;
-        std::string redisKey = crypto::get_instrumentInfo_channel_key(
-            ExchangeTypeEnum2StrMap[info.exchangeTypeEnum],
-            InstTypeEnum2StrMap[info.instTypeEnum],
-            info.instId);
-        std::string infoJsonStr = info.getJsonStr();
+        const std::string& redisKey = crypto::get_instrumentInfo_channel_key(ExchangeTypeEnum2StrMap[info.exchangeTypeEnum], InstTypeEnum2StrMap[info.instTypeEnum], info.instId);
+        const std::string& infoJsonStr = info.getJsonStr();
         redisClient->set(redisKey, infoJsonStr);
     }
 #endif
 }
 
 void BaseInfo::updateInstrumentInfo(const md::InstrumentInfo& info) {
-    std::string key = fmt::format("{}.{}.{}", ExchangeTypeEnum2StrMap[info.exchangeTypeEnum], InstTypeEnum2StrMap[info.instTypeEnum], info.instId);
+    const std::string& key = fmt::format("{}.{}.{}", ExchangeTypeEnum2StrMap[info.exchangeTypeEnum], InstTypeEnum2StrMap[info.instTypeEnum], info.instId);
     mInstrumentInfo[key] = info;
 }
 
@@ -74,20 +77,19 @@ void BaseInfo::getBaseMagnifyNum(const std::string& originName, std::string& bas
 // ============================================================================
 // syncGet: BeastRestClient 的同步包装 (基于 promise/future)
 // ============================================================================
-bool BaseInfo::syncGet(const std::string& host, const std::string& target,
-                       std::string& body_out, int& status_out) {
+bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::string& body_out, int& status_out) {
     auto it = mClients.find(host);
     if (it == mClients.end()) {
         net::RestClientConfig cfg;
-        cfg.host                        = host;
-        cfg.port                        = 443;
-        cfg.use_tls                     = true;
-        cfg.verify_peer                 = false;
-        cfg.max_connections             = 1;
-        cfg.parallel_establish_threads  = 1;
-        cfg.request_queue_capacity      = 16;
-        cfg.request_pool_size           = 8;
-        cfg.request_timeout_ms          = 30'000;
+        cfg.host = host;
+        cfg.port = 443;
+        cfg.use_tls = true;
+        cfg.verify_peer = false;
+        cfg.max_connections = 1;
+        cfg.parallel_establish_threads = 1;
+        cfg.request_queue_capacity = 16;
+        cfg.request_pool_size = 8;
+        cfg.request_timeout_ms = 30'000;
 
         try {
             auto client = std::make_shared<net::RestClient>(cfg);
@@ -99,34 +101,52 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target,
         }
     }
 
-    auto promise = std::make_shared<std::promise<std::pair<boost::system::error_code, net::HttpResponse>>>();
-    auto future  = promise->get_future();
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        auto promise = std::make_shared<std::promise<std::pair<boost::system::error_code, net::HttpResponse>>>();
+        auto future  = promise->get_future();
 
-    it->second->async_request(
-        boost::beast::http::verb::get,
-        target,
-        std::string(),
-        std::string(),
-        [promise](boost::system::error_code ec, net::HttpResponse resp) {
-            promise->set_value(std::make_pair(ec, std::move(resp)));
-        });
+        it->second->async_request(boost::beast::http::verb::get, target, std::string(), std::string(), [promise](boost::system::error_code ec, net::HttpResponse resp) {
+                promise->set_value(std::make_pair(ec, std::move(resp)));
+            });
 
-    if (future.wait_for(std::chrono::seconds(35)) != std::future_status::ready) {
-        LOG_ERROR("syncGet {} {} timeout (>35s, RestClient worker maybe stuck?)", host, target);
-        return false;
-    }
+        if (future.wait_for(std::chrono::seconds(35)) != std::future_status::ready) {
+            LOG_ERROR("syncGet {} {} timeout (>35s, RestClient worker maybe stuck?)", host, target);
+            return false;
+        }
 
-    auto result = future.get();
-    boost::system::error_code ec = result.first;
-    net::HttpResponse resp       = std::move(result.second);
+        auto result = future.get();
+        boost::system::error_code ec = result.first;
+        net::HttpResponse resp = std::move(result.second);
 
-    if (ec) {
+        if (!ec) {
+            status_out = resp.status_code;
+            body_out = std::move(resp.body);
+            return true;
+        }
+
+
+        const bool is_stale = ec == boost::asio::error::eof || boost::asio::error::connection_reset || boost::asio::error::broken_pipe || boost::asio::error::end_of_stream;
+        if (attempt == 0 && is_stale) {
+            LOG_INFO("syncGet {} {} got '{}' (likely stale keep-alive), waiting for RestClient reconnect + retry once", host, target, ec.message());
+            
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            while (std::chrono::steady_clock::now() < deadline) {
+                if (it->second->idle_count() > 0) {
+                    break;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(100);
+            }
+            continue;
+        }
+ 
+
         LOG_ERROR("syncGet {} {} failed: {}", host, target, ec.message());
         return false;
     }
-    status_out = resp.status_code;
-    body_out   = std::move(resp.body);
-    return true;
+
+
+    return false;
 }
 
 
@@ -134,8 +154,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target,
 // SHM 写: 由 ContractInfoOperation 汇总完所有 exchange 后调, 一次原子交换
 // ============================================================================
 #ifdef USE_INFO_SHM
-void BaseInfo::flushAllToShm(const std::unordered_map<std::string, md::InstrumentInfo>& allInfo,
-                             Config* conf) {
+void BaseInfo::flushAllToShm(const std::unordered_map<std::string, md::InstrumentInfo>& allInfo, Config* conf) {
     // 静态 writer, 整个进程共享一个 mmap 段
     static sm::shm::Writer sWriter;
     static bool sOpened = false;
@@ -152,8 +171,7 @@ void BaseInfo::flushAllToShm(const std::unordered_map<std::string, md::Instrumen
         }
 
         if (!sWriter.open(name, capacity)) {
-            LOG_ERROR("[shm] failed to open/create instrument info SHM '{}' capacity={}",
-                      name, capacity);
+            LOG_ERROR("[shm] failed to open/create instrument info SHM '{}' capacity={}", name, capacity);
             return;
         }
         LOG_INFO("[shm] instrument info SHM ready: name='{}' capacity={}", name, capacity);
@@ -167,11 +185,8 @@ void BaseInfo::flushAllToShm(const std::unordered_map<std::string, md::Instrumen
         vec.push_back(kv.second);
     }
 
-    if (vec.size() > sWriter.capacity()) {
-        LOG_ERROR("[shm] instrument count {} exceeds SHM capacity {}. "
-                  "Increase 'instrumentShmCapacity' in config and restart contractinfo.",
-                  vec.size(), sWriter.capacity());
-        // Writer::publish 会自动截断到 capacity, 但下游会缺条目, 必须告警
+    if (vec.size() > sWriter.capacity()) { // Writer::publish 会自动截断到 capacity, 但下游会缺条目, 必须告警
+        LOG_ERROR("[shm] instrument count {} exceeds SHM capacity {}. Increase 'instrumentShmCapacity' in config and restart contractinfo.", vec.size(), sWriter.capacity());
     }
 
     if (!sWriter.publish(vec)) {

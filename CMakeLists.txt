@@ -12,6 +12,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -fPIC -DABI -DNDEBUG -DOPENBLAS  -O3
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 
+if(USE_INFO_SHM)
+    add_definitions(-DUSE_INFO_SHM)
+#else()
+#endif()
+
 # 读取整个文件
 file(READ /inc/version.inc FILE_CONTENT)
 
@@ -64,7 +69,6 @@ link_libraries(
         boost_system 
         crypto 
         ssl 
-        cpprest 
         z 
         rt  
         dl 

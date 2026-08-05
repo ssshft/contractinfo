@@ -26,8 +26,7 @@ namespace {
 //   PRICE_FILTER : {filterType, minPrice, maxPrice, tickSize}
 //   LOT_SIZE     : {filterType, minQty, maxQty, stepSize}
 //   NOTIONAL     : {filterType, minNotional 或 notional, ...}
-inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo& info,
-                         bool isSpot, bool isCFuture) {
+inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo& info, bool isSpot, bool isCFuture) {
     std::string_view filterType;
     if (filter["filterType"].get(filterType) != simdjson::SUCCESS) return;
 
@@ -76,7 +75,10 @@ void BinanceInfo::getSpotInfo() {
     try {
         int status = 0;
         std::string body;
-        if (!syncGet("api.binance.com", "/api/v3/exchangeInfo", body, status)) return;
+        if (!syncGet("api.binance.com", "/api/v3/exchangeInfo", body, status)) {
+            return;
+        }
+
         if (status != 200) {
             LOG_ERROR("getSpotInfo error! status: {}", status);
             return;
@@ -118,20 +120,22 @@ void BinanceInfo::getSpotInfo() {
             info.exchangeTypeEnum = BINANCE;
             info.instTypeEnum     = SPOT;
             crypto::copy_sv_to_char_array(info.originInstId, symbol);
-            crypto::copy_sv_to_char_array(info.base,         base);
-            crypto::copy_sv_to_char_array(info.quote,        quoteAsset);
-            crypto::copy_sv_to_char_array(info.margin,       quoteAsset);
-            fmt::format_to      (info.instId, "{}-{}", info.base, info.quote);
-            info.value          = 1;
-            info.magnifyNumber  = magnifyNumber;
-            info.reduceNumber   = reduceNumber;
+            crypto::copy_sv_to_char_array(info.base, base);
+            crypto::copy_sv_to_char_array(info.quote, quoteAsset);
+            crypto::copy_sv_to_char_array(info.margin, quoteAsset);
+            fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
+            info.value = 1;
+            info.magnifyNumber = magnifyNumber;
+            info.reduceNumber = reduceNumber;
 
             // filters 数组 (在对象末尾, JSON 顺序访问符合规则)
             auto filters = sym["filters"].get_array();
             if (filters.error() == simdjson::SUCCESS) {
                 for (auto f_val : filters) {
                     auto f = f_val.get_object();
-                    if (f.error() != simdjson::SUCCESS) continue;
+                    if (f.error() != simdjson::SUCCESS) {
+                        continue;
+                    }
                     apply_filter(f.value(), info, /*isSpot=*/true, /*isCFuture=*/false);
                 }
             }
@@ -158,7 +162,10 @@ void BinanceInfo::getUFutureInfo() {
     try {
         int status = 0;
         std::string body;
-        if (!syncGet("fapi.binance.com", "/fapi/v1/exchangeInfo", body, status)) return;
+        if (!syncGet("fapi.binance.com", "/fapi/v1/exchangeInfo", body, status)) {
+            return;
+        }
+
         if (status != 200) {
             LOG_ERROR("getUFutureInfo error, status: {}", status);
             return;
@@ -180,7 +187,9 @@ void BinanceInfo::getUFutureInfo() {
 
         for (auto sym_val : symbols) {
             auto sym = sym_val.get_object();
-            if (sym.error() != simdjson::SUCCESS) continue;
+            if (sym.error() != simdjson::SUCCESS) {
+                continue;
+            }
 
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
@@ -200,34 +209,48 @@ void BinanceInfo::getUFutureInfo() {
 
             info.exchangeTypeEnum = BINANCE;
             crypto::copy_sv_to_char_array(info.originInstId, symbol);
-            crypto::copy_sv_to_char_array(info.base,         base);
-            crypto::copy_sv_to_char_array(info.quote,        quoteAsset);
-            crypto::copy_sv_to_char_array(info.margin,       marginAsset);
-            info.value          = 1;
-            info.magnifyNumber  = magnifyNumber;
-            info.reduceNumber   = reduceNumber;
+            crypto::copy_sv_to_char_array(info.base, base);
+            crypto::copy_sv_to_char_array(info.quote, quoteAsset);
+            crypto::copy_sv_to_char_array(info.margin, marginAsset);
+            info.value = 1;
+            info.magnifyNumber = magnifyNumber;
+            info.reduceNumber = reduceNumber;
 
             if (contractType.find("PERPETUAL") != std::string_view::npos) {
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
-                if      (crypto::str_cmp(info.margin, "USDT"))    info.instTypeEnum = USDT_SWAP;
-                else if (crypto::str_cmp(info.margin, "BUSD"))    info.instTypeEnum = BUSD_SWAP;
-                else if (crypto::str_cmp(info.base,   info.margin)) info.instTypeEnum = C_SWAP;
+                if (crypto::str_cmp(info.margin, "USDT")) {
+                    info.instTypeEnum = USDT_SWAP;
+                }
+                else if (crypto::str_cmp(info.margin, "BUSD")) {
+                    info.instTypeEnum = BUSD_SWAP;
+                }
+                else if (crypto::str_cmp(info.base, info.margin)) {
+                    info.instTypeEnum = C_SWAP;
+                } 
             }
             else if (contractType.find("QUARTER") != std::string_view::npos) {
                 std::vector<std::string> vv = crypto::split(info.originInstId, "_");
                 if (!vv.empty()) {
                     fmt::format_to(info.instId, "{}-{}-{}", info.base, info.quote, vv.back());
                 }
-                if      (crypto::str_cmp(info.margin, "USDT"))    info.instTypeEnum = USDT_FUTURES;
-                else if (crypto::str_cmp(info.margin, "BUSD"))    info.instTypeEnum = BTC_FUTURES;
-                else if (crypto::str_cmp(info.base,   info.margin)) info.instTypeEnum = C_FUTURES;
+                if (crypto::str_cmp(info.margin, "USDT")) {
+                    info.instTypeEnum = USDT_FUTURES;
+                }
+                else if (crypto::str_cmp(info.margin, "BUSD")) {
+                    info.instTypeEnum = BTC_FUTURES;
+                }
+                else if (crypto::str_cmp(info.base, info.margin)) {
+                    info.instTypeEnum = C_FUTURES;
+                }
             }
 
             auto filters = sym["filters"].get_array();
             if (filters.error() == simdjson::SUCCESS) {
                 for (auto f_val : filters) {
                     auto f = f_val.get_object();
-                    if (f.error() != simdjson::SUCCESS) continue;
+                    if (f.error() != simdjson::SUCCESS) {
+                        continue;
+                    }
                     apply_filter(f.value(), info, /*isSpot=*/false, /*isCFuture=*/false);
                 }
             }
@@ -255,7 +278,9 @@ void BinanceInfo::getCFutureInfo() {
     try {
         int status = 0;
         std::string body;
-        if (!syncGet("dapi.binance.com", "/dapi/v1/exchangeInfo", body, status)) return;
+        if (!syncGet("dapi.binance.com", "/dapi/v1/exchangeInfo", body, status)) {
+            return;
+        }
         if (status != 200) {
             LOG_ERROR("getCFutureInfo error, status: {}", status);
             return;
@@ -277,7 +302,9 @@ void BinanceInfo::getCFutureInfo() {
 
         for (auto sym_val : symbols) {
             auto sym = sym_val.get_object();
-            if (sym.error() != simdjson::SUCCESS) continue;
+            if (sym.error() != simdjson::SUCCESS) {
+                continue;
+            }
 
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
@@ -298,34 +325,48 @@ void BinanceInfo::getCFutureInfo() {
 
             info.exchangeTypeEnum = BINANCE;
             crypto::copy_sv_to_char_array(info.originInstId, symbol);
-            crypto::copy_sv_to_char_array(info.base,         base);
-            crypto::copy_sv_to_char_array(info.quote,        quoteAsset);
-            crypto::copy_sv_to_char_array(info.margin,       marginAsset);
-            info.value          = crypto::fast_atod(contractSize);
-            info.magnifyNumber  = magnifyNumber;
-            info.reduceNumber   = reduceNumber;
+            crypto::copy_sv_to_char_array(info.base, base);
+            crypto::copy_sv_to_char_array(info.quote, quoteAsset);
+            crypto::copy_sv_to_char_array(info.margin, marginAsset);
+            info.value = crypto::fast_atod(contractSize);
+            info.magnifyNumber = magnifyNumber;
+            info.reduceNumber = reduceNumber;
 
             if (contractType.find("PERPETUAL") != std::string_view::npos) {
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
-                if      (crypto::str_cmp(info.margin, "USDT"))    info.instTypeEnum = USDT_SWAP;
-                else if (crypto::str_cmp(info.margin, "BUSD"))    info.instTypeEnum = BUSD_SWAP;
-                else if (crypto::str_cmp(info.base,   info.margin)) info.instTypeEnum = C_SWAP;
+                if (crypto::str_cmp(info.margin, "USDT")) {
+                    info.instTypeEnum = USDT_SWAP;
+                }
+                else if (crypto::str_cmp(info.margin, "BUSD")) {
+                    info.instTypeEnum = BUSD_SWAP;
+                }
+                else if (crypto::str_cmp(info.base, info.margin)) {
+                    info.instTypeEnum = C_SWAP;
+                }
             }
             else if (contractType.find("QUARTER") != std::string_view::npos) {
                 std::vector<std::string> vv = crypto::split(info.originInstId, "_");
                 if (!vv.empty()) {
                     fmt::format_to(info.instId, "{}-{}-{}", info.base, info.quote, vv.back());
                 }
-                if      (crypto::str_cmp(info.margin, "USDT"))    info.instTypeEnum = USDT_FUTURES;
-                else if (crypto::str_cmp(info.margin, "BUSD"))    info.instTypeEnum = BTC_FUTURES;
-                else if (crypto::str_cmp(info.base,   info.margin)) info.instTypeEnum = C_FUTURES;
+                if (crypto::str_cmp(info.margin, "USDT")) {
+                    info.instTypeEnum = USDT_FUTURES;
+                }
+                else if (crypto::str_cmp(info.margin, "BUSD")) {
+                    info.instTypeEnum = BTC_FUTURES;
+                }
+                else if (crypto::str_cmp(info.base, info.margin)) {
+                    info.instTypeEnum = C_FUTURES;
+                }
             }
 
             auto filters = sym["filters"].get_array();
             if (filters.error() == simdjson::SUCCESS) {
                 for (auto f_val : filters) {
                     auto f = f_val.get_object();
-                    if (f.error() != simdjson::SUCCESS) continue;
+                    if (f.error() != simdjson::SUCCESS) {
+                        continue;
+                    }
                     apply_filter(f.value(), info, /*isSpot=*/false, /*isCFuture=*/true);
                 }
             }

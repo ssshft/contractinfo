@@ -15,31 +15,21 @@
 #include <memory>
 #include <unordered_map>
 
-// rapidjson / simdjson 仅用于解析交易所返回的 JSON, 各子类 (BinanceInfo 等) 直接用。
-//
-// 输出侧靠 USE_INFO_SHM 宏切换:
-//   defined  → saveData() 全量原子写共享内存 (下游 SecurityManager 通过 mmap 读)
-//   undefined → 原逻辑, 写 Redis (兼容旧下游)
-
 
 class BaseInfo {
 public:
     BaseInfo(RedisClient* client, Config* conf);
+    BaseInfo(Config* conf);
     virtual ~BaseInfo();
 
-    // 60s 循环里被 ContractInfoOperation 调用:
-    //   USE_INFO_SHM  → 把 mInstrumentInfo 全量 publish 到 SHM (seqlock atomic swap)
-    //   否则          → 逐条 SET 到 Redis (旧逻辑)
     void saveData();
-
     void updateInstrumentInfo(const md::InstrumentInfo& info);
     std::unordered_map<std::string, md::InstrumentInfo>& getInstrumentInfo();
     void getBaseMagnifyNum(const std::string& originName, std::string& base, double& magnifyNum, double& reduceNum);
     virtual void syncExchangeInfo() = 0;
 
 protected:
-    bool syncGet(const std::string& host, const std::string& target,
-                 std::string& body_out, int& status_out);
+    bool syncGet(const std::string& host, const std::string& target, std::string& body_out, int& status_out);
 
 private:
     std::unordered_map<std::string, md::InstrumentInfo> mInstrumentInfo;
@@ -66,7 +56,6 @@ private:
 public:
     // 由 ContractInfoOperation 在收集完所有 exchange 的信息后调用, 一次原子写 SHM。
     // 使用 static 保证跨 BaseInfo 实例共享一个 writer。
-    static void flushAllToShm(const std::unordered_map<std::string, md::InstrumentInfo>& allInfo,
-                              Config* conf);
+    static void flushAllToShm(const std::unordered_map<std::string, md::InstrumentInfo>& allInfo, Config* conf);
 #endif
 };
