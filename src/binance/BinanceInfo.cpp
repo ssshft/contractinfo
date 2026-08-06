@@ -21,45 +21,85 @@ void BinanceInfo::syncExchangeInfo() {
 // filter 分派: spot / futures / coinm 通用逻辑, 走同一 helper
 // ============================================================================
 namespace {
-
-// Binance filter 内字段顺序 (schema 里固定):
-//   PRICE_FILTER : {filterType, minPrice, maxPrice, tickSize}
-//   LOT_SIZE     : {filterType, minQty, maxQty, stepSize}
-//   NOTIONAL     : {filterType, minNotional 或 notional, ...}
 inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo& info, bool isSpot, bool isCFuture) {
-    std::string_view filterType;
-    if (filter["filterType"].get(filterType) != simdjson::SUCCESS) return;
+    std::string_view filterType_sv, tickSize_sv, minQty_sv, maxQty_sv, stepSize_sv;
+    std::string_view minNotional_sv, notional_sv;
 
-    if (filterType == "PRICE_FILTER") {
-        std::string_view tickSize;
-        if (filter["tickSize"].get(tickSize) == simdjson::SUCCESS) {
-            info.tickSize = crypto::fast_atod(tickSize);
+    // 一次前向遍历, 顺序无关, 每个字段只扫一遍, 无 rewind
+    for (auto field : filter) {
+        auto ku = field.unescaped_key();
+        if (ku.error()) {
+            continue;
+        }
+
+        std::string_view k = ku.value_unsafe();
+        auto value = field.value();
+
+        if (k == "filterType") {
+            value.get(filterType_sv);
+        }
+        else if (k == "tickSize") {
+            value.get(tickSize_sv);
+        }   
+        else if (k == "minQty") {
+            value.get(minQty_sv);
+        }
+        else if (k == "maxQty") {
+            value.get(maxQty_sv);
+        } 
+        else if (k == "stepSize") {
+            value.get(stepSize_sv);
+        }  
+        else if (k == "minNotional") {
+            value.get(minNotional_sv);
+        }
+        else if (k == "notional") {
+            value.get(notional_sv);
+        }  
+        // 其他字段 (limit / multiplier* / ...) 我们不关心, 让 simdjson 跳过
+    }
+
+    // 拿到所有字段后, 按 filterType 分发, 语义清晰
+    if (filterType_sv == "PRICE_FILTER") {
+        if (!tickSize_sv.empty()) {
+            info.tickSize = crypto::fast_atod(tickSize_sv);
         }
     }
-    else if (filterType == "LOT_SIZE") {
-        std::string_view minQty, maxQty, stepSize;
-        filter["minQty"].get(minQty);
-        filter["maxQty"].get(maxQty);
+    else if (filterType_sv == "LOT_SIZE") {
         if (isSpot) {
-            info.lotSize = crypto::fast_atod(minQty);
+            if (!minQty_sv.empty()) {
+                info.lotSize = crypto::fast_atod(minQty_sv);
+            }
         } else {
-            filter["stepSize"].get(stepSize);
-            info.lotSize = crypto::fast_atod(stepSize);
+            if (!stepSize_sv.empty()) {
+                info.lotSize = crypto::fast_atod(stepSize_sv);
+            }
+
             if (isCFuture) {
-                info.minAmount = crypto::fast_atod(minQty);
+                if (!minQty_sv.empty()) {
+                    info.minAmount = crypto::fast_atod(minQty_sv);
+                }
             }
         }
-        info.minSize = crypto::fast_atod(minQty);
-        info.maxSize = crypto::fast_atod(maxQty);
+
+        if (!minQty_sv.empty()) {
+            info.minSize = crypto::fast_atod(minQty_sv);
+        }
+
+        if (!maxQty_sv.empty()) {
+            info.maxSize = crypto::fast_atod(maxQty_sv);
+        }
     }
-    else if (filterType == "NOTIONAL") {
-        std::string_view v;
-        auto k = filter[isSpot ? "minNotional" : "notional"];
-        if (k.get(v) == simdjson::SUCCESS) {
+    else if (filterType_sv == "NOTIONAL") {
+        std::string_view v = isSpot ? minNotional_sv : notional_sv;
+        if (!v.empty()) {
             info.minAmount = crypto::fast_atod(v);
         }
     }
+    // MARKET_LOT_SIZE / MAX_NUM_ORDERS / PERCENT_PRICE 我们不用, 忽略
 }
+
+
 
 } // anonymous namespace
 
@@ -100,7 +140,9 @@ void BinanceInfo::getSpotInfo() {
 
         for (auto sym_val : symbols) {
             auto sym = sym_val.get_object();
-            if (sym.error() != simdjson::SUCCESS) continue;
+            if (sym.error() != simdjson::SUCCESS) {
+                continue;
+            }
 
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
@@ -118,7 +160,7 @@ void BinanceInfo::getSpotInfo() {
             getBaseMagnifyNum(baseAssetStr, base, magnifyNumber, reduceNumber);
 
             info.exchangeTypeEnum = BINANCE;
-            info.instTypeEnum     = SPOT;
+            info.instTypeEnum = SPOT;
             crypto::copy_sv_to_char_array(info.originInstId, symbol);
             crypto::copy_sv_to_char_array(info.base, base);
             crypto::copy_sv_to_char_array(info.quote, quoteAsset);
@@ -221,6 +263,9 @@ void BinanceInfo::getUFutureInfo() {
                 if (crypto::str_cmp(info.margin, "USDT")) {
                     info.instTypeEnum = USDT_SWAP;
                 }
+                if (crypto::str_cmp(info.margin, "USDC")) {
+                    info.instTypeEnum = USDC_SWAP;
+                }
                 else if (crypto::str_cmp(info.margin, "BUSD")) {
                     info.instTypeEnum = BUSD_SWAP;
                 }
@@ -309,14 +354,15 @@ void BinanceInfo::getCFutureInfo() {
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
 
-            // ---- 严格按 JSON 顺序: symbol → contractType → contractSize → marginAsset → baseAsset → quoteAsset ----
-            std::string_view symbol, contractType, contractSize, marginAsset, baseAsset, quoteAsset;
+            std::string_view symbol, contractType, marginAsset, baseAsset, quoteAsset;
             sym["symbol"].get(symbol);
             sym["contractType"].get(contractType);
-            sym["contractSize"].get(contractSize);
             sym["marginAsset"].get(marginAsset);
             sym["baseAsset"].get(baseAsset);
             sym["quoteAsset"].get(quoteAsset);
+
+            int contractSize = 0;
+            sym["contractSize"].get(contractSize);
 
             std::string baseAssetStr(baseAsset);
             std::string base;
@@ -328,7 +374,7 @@ void BinanceInfo::getCFutureInfo() {
             crypto::copy_sv_to_char_array(info.base, base);
             crypto::copy_sv_to_char_array(info.quote, quoteAsset);
             crypto::copy_sv_to_char_array(info.margin, marginAsset);
-            info.value = crypto::fast_atod(contractSize);
+            info.value = contractSize;
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
 

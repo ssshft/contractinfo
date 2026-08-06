@@ -95,3 +95,9 @@ add_executable(ContractInfo
 add_executable(GetInfo
         tools/GetInfo.cpp
         )
+
+if(USE_INFO_SHM)
+    add_executable(DumpInfoShm tools/DumpInfoShm.cpp)
+    add_executable(TestInfoShm tools/TestInfoShm.cpp)
+    add_executable(BenchInfoShm tools/BenchInfoShm.cpp)
+endif()

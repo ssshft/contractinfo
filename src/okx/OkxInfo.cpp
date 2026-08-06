@@ -13,20 +13,6 @@ void OkxInfo::syncExchangeInfo() {
     }
 }
 
-
-// ============================================================================
-// OKX GET /api/v5/public/instruments?instType=...
-//   response: {"code":"0", "msg":"", "data":[{...},...]}
-//
-// data[i] 每条 instrument 的字段顺序是**字母序** (实测):
-//   auctionEndTime, baseCcy, ctMult, ctType, ctVal, ctValCcy, contTdSwTime,
-//   elp, expTime, ..., instId, instType, ..., listTime, lotSz, maxIcebergSz,
-//   maxLmtAmt, maxLmtSz, maxMktAmt, maxMktSz, ..., minSz, ...,
-//   quoteCcy, ..., settleCcy, ..., tickSz, uly, instIdCode
-//
-// ⚠️ 因此 simdjson ondemand 访问顺序必须按字母序:
-//   baseCcy → ctType → ctVal → instId → lotSz → maxLmtSz → minSz → quoteCcy → settleCcy → tickSz
-// ============================================================================
 void OkxInfo::getInfo(const std::string& instType) {
     try {
         std::string path = "/api/v5/public/instruments?instType=" + instType;
@@ -53,13 +39,15 @@ void OkxInfo::getInfo(const std::string& instType) {
             return;
         }
 
-        const bool isSpot    = crypto::str_cmp(instType.c_str(), "SPOT");
-        const bool isSwap    = crypto::str_cmp(instType.c_str(), "SWAP");
+        const bool isSpot = crypto::str_cmp(instType.c_str(), "SPOT");
+        const bool isSwap = crypto::str_cmp(instType.c_str(), "SWAP");
         const bool isFutures = crypto::str_cmp(instType.c_str(), "FUTURES");
 
         for (auto sym_val : data) {
             auto sym = sym_val.get_object();
-            if (sym.error() != simdjson::SUCCESS) continue;
+            if (sym.error() != simdjson::SUCCESS) {
+                continue;
+            }
 
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
@@ -86,7 +74,6 @@ void OkxInfo::getInfo(const std::string& instType) {
             };
 
             if (isSpot) {
-                // SPOT: baseCcy → instId → lotSz → maxLmtSz → minSz → quoteCcy → tickSz
                 sym["baseCcy"].get(baseCcy_sv);
                 sym["instId"].get(instId_sv);
                 read_inst_id_code(sym.value(), instIdCode);
@@ -96,7 +83,6 @@ void OkxInfo::getInfo(const std::string& instType) {
                 sym["quoteCcy"].get(quoteCcy_sv);
                 sym["tickSz"].get(tickSz_sv);
             } else {
-                // SWAP / FUTURES: ctType → ctVal → instId → lotSz → maxLmtSz → minSz → settleCcy → tickSz
                 sym["ctType"].get(ctType_sv);
                 sym["ctVal"].get(ctVal_sv);
                 sym["instId"].get(instId_sv);
@@ -125,8 +111,8 @@ void OkxInfo::getInfo(const std::string& instType) {
                 std::string baseCcy = crypto::to_upper(std::string(baseCcy_sv));
                 getBaseMagnifyNum(baseCcy, base, magnifyNumber, reduceNumber);
                 std::string quoteCcy = crypto::to_upper(std::string(quoteCcy_sv));
-                crypto::copy_sv_to_char_array(info.base,   base);
-                crypto::copy_sv_to_char_array(info.quote,  quoteCcy);
+                crypto::copy_sv_to_char_array(info.base, base);
+                crypto::copy_sv_to_char_array(info.quote, quoteCcy);
                 crypto::copy_sv_to_char_array(info.margin, quoteCcy);
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
                 info.value = 1;
@@ -134,30 +120,40 @@ void OkxInfo::getInfo(const std::string& instType) {
             else if (isSwap || isFutures) {
                 // OKX 合约 instId 形如 "BTC-USDT-SWAP" / "BTC-USDT-241227", 从中拆出 base/quote
                 std::vector<std::string> vv = crypto::split(std::string(instId_sv), "-");
-                if (vv.size() < 2) continue;   // 异常数据跳过
+                if (vv.size() < 2) {
+                    continue;   // 异常数据跳过
+                }
                 std::string baseCcy = crypto::to_upper(vv[0]);
                 getBaseMagnifyNum(baseCcy, base, magnifyNumber, reduceNumber);
                 std::string quoteCcy = crypto::to_upper(vv[1]);
-                std::string settle   = crypto::to_upper(std::string(settleCcy_sv));
+                std::string settle = crypto::to_upper(std::string(settleCcy_sv));
 
-                crypto::copy_sv_to_char_array(info.base,   base);
-                crypto::copy_sv_to_char_array(info.quote,  quoteCcy);
+                crypto::copy_sv_to_char_array(info.base, base);
+                crypto::copy_sv_to_char_array(info.quote, quoteCcy);
                 crypto::copy_sv_to_char_array(info.margin, settle);
                 info.value = crypto::fast_atod(ctVal_sv);
 
                 if (isSwap) {
                     fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
-                    if (ctType_sv == "linear")  info.instTypeEnum = USDT_SWAP;
-                    else if(ctType_sv == "inverse") info.instTypeEnum = C_SWAP;
+                    if (ctType_sv == "linear") {
+                        info.instTypeEnum = USDT_SWAP;
+                    }
+                    else if (ctType_sv == "inverse") {
+                        info.instTypeEnum = C_SWAP;
+                    }
                 } else {
                     // FUTURES: instId 里已经带交割日期, 直接沿用作为 instId 更直观
                     crypto::copy_sv_to_char_array(info.instId, instId_sv);
-                    if (ctType_sv == "linear")  info.instTypeEnum = USDT_FUTURES;
-                    else if (ctType_sv == "inverse") info.instTypeEnum = C_FUTURES;
+                    if (ctType_sv == "linear") {
+                        info.instTypeEnum = USDT_FUTURES;
+                    }
+                    else if (ctType_sv == "inverse") {
+                        info.instTypeEnum = C_FUTURES;
+                    }
                 }
             }
             info.magnifyNumber = magnifyNumber;
-            info.reduceNumber  = reduceNumber;
+            info.reduceNumber = reduceNumber;
 
             updateInstrumentInfo(info);
         }

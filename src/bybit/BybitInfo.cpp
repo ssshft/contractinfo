@@ -36,7 +36,10 @@ void BybitInfo::getInfo(const std::string& instType) {
         std::string path = "/v5/market/instruments-info?category=" + instType + "&limit=1000";
         int status = 0;
         std::string body;
-        if (!syncGet("api.bybit.com", path, body, status)) return;
+        if (!syncGet("api.bybit.com", path, body, status)) {
+            return;
+        }
+
         if (status != 200) {
             LOG_ERROR("BybitInfo::getInfo error! status: {}", status);
             return;
@@ -65,18 +68,18 @@ void BybitInfo::getInfo(const std::string& instType) {
             return;
         }
 
-        const bool isSpot    = crypto::str_cmp(instType.c_str(), "spot");
-        const bool isLinear  = crypto::str_cmp(instType.c_str(), "linear");
+        const bool isSpot = crypto::str_cmp(instType.c_str(), "spot");
+        const bool isLinear = crypto::str_cmp(instType.c_str(), "linear");
         const bool isInverse = crypto::str_cmp(instType.c_str(), "inverse");
 
         for (auto sym_val : list) {
             auto sym = sym_val.get_object();
-            if (sym.error() != simdjson::SUCCESS) continue;
+            if (sym.error() != simdjson::SUCCESS) {
+                continue;
+            }
 
             md::InstrumentInfo info;
             memset(&info, 0, sizeof(md::InstrumentInfo));
-            info.exchangeTypeEnum = BYBIT;
-            info.value            = 1;
 
             std::string_view symbol, baseCoin, quoteCoin, contractType_sv, settleCoin_sv;
 
@@ -99,15 +102,15 @@ void BybitInfo::getInfo(const std::string& instType) {
             getBaseMagnifyNum(baseCoinStr, base, magnifyNumber, reduceNumber);
             std::string quoteCoinUpper = crypto::to_upper(std::string(quoteCoin));
 
+            info.exchangeTypeEnum = BYBIT;
             crypto::copy_sv_to_char_array(info.originInstId, symbol);
-            crypto::copy_sv_to_char_array(info.base,         base);
-            crypto::copy_sv_to_char_array(info.quote,        quoteCoinUpper);
+            crypto::copy_sv_to_char_array(info.base, base);
+            crypto::copy_sv_to_char_array(info.quote, quoteCoinUpper);
+            info.value = 1;
             info.magnifyNumber = magnifyNumber;
-            info.reduceNumber  = reduceNumber;
+            info.reduceNumber = reduceNumber;
 
             if (isSpot) {
-                // Spot: lotSizeFilter 里 basePrecision → quotePrecision → minOrderQty → maxOrderQty → minOrderAmt → maxOrderAmt
-                //       priceFilter    里 tickSize
                 info.instTypeEnum = SPOT;
                 crypto::copy_sv_to_char_array(info.margin, quoteCoinUpper);
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
@@ -119,30 +122,48 @@ void BybitInfo::getInfo(const std::string& instType) {
                     lot["minOrderQty"].get(minOrderQty);
                     lot["maxOrderQty"].get(maxOrderQty);
                     lot["minOrderAmt"].get(minOrderAmt);
-                    info.lotSize   = crypto::fast_atod(basePrecision);
-                    info.minSize   = crypto::fast_atod(minOrderQty);
-                    if (!maxOrderQty.empty()) info.maxSize = crypto::fast_atod(maxOrderQty);
-                    info.minAmount = crypto::fast_atod(minOrderAmt);
+
+                    if (!basePrecision.empty()) {
+                        info.lotSize = crypto::fast_atod(basePrecision);
+                    }
+
+                    if (!minOrderQty.empty()) {
+                        info.minSize = crypto::fast_atod(minOrderQty);
+                    }
+                    
+                    if (!maxOrderQty.empty()) {
+                        info.maxSize = crypto::fast_atod(maxOrderQty);
+                    }
+
+                    if (!minOrderAmt.empty()) {
+                        info.minAmount = crypto::fast_atod(minOrderAmt);
+                    }
                 }
                 auto price = sym["priceFilter"].get_object();
                 if (price.error() == simdjson::SUCCESS) {
                     std::string_view tickSize;
                     price["tickSize"].get(tickSize);
-                    info.tickSize = crypto::fast_atod(tickSize);
+                    if (!tickSize.empty()) {
+                        info.tickSize = crypto::fast_atod(tickSize);
+                    }
                 }
             }
             else if (isLinear || isInverse) {
-                // Linear/Inverse: 拆合约名 (e.g. BTCUSDT / BTCUSDT-27DEC24 / BTCUSD / BTCUSDU25)
-                // 精确类型区分靠 contractType
-                sym["settleCoin"].get(settleCoin_sv);
-                std::string settleCoinUpper = crypto::to_upper(std::string(settleCoin_sv));
-                crypto::copy_sv_to_char_array(info.margin, settleCoinUpper);
-
                 bool isFutures = false;
-                if (contractType_sv == "LinearPerpetual")  info.instTypeEnum = USDT_SWAP;
-                else if (contractType_sv == "LinearFutures") { info.instTypeEnum = USDT_FUTURES; isFutures = true; }
-                else if (contractType_sv == "InversePerpetual") info.instTypeEnum = C_SWAP;
-                else if (contractType_sv == "InverseFutures") { info.instTypeEnum = C_FUTURES;   isFutures = true; }
+                if (contractType_sv == "LinearPerpetual") {
+                    info.instTypeEnum = USDT_SWAP;
+                }
+                else if (contractType_sv == "LinearFutures") { 
+                    info.instTypeEnum = USDT_FUTURES; 
+                    isFutures = true; 
+                }
+                else if (contractType_sv == "InversePerpetual") {
+                    info.instTypeEnum = C_SWAP;
+                }
+                else if (contractType_sv == "InverseFutures") {
+                    info.instTypeEnum = C_FUTURES;   
+                    isFutures = true; 
+                }
 
                 if (isFutures) {
                     std::vector<std::string> vv = crypto::split(info.originInstId, "-");
@@ -158,7 +179,9 @@ void BybitInfo::getInfo(const std::string& instType) {
                 if (price.error() == simdjson::SUCCESS) {
                     std::string_view tickSize;
                     price["tickSize"].get(tickSize);
-                    info.tickSize = crypto::fast_atod(tickSize);
+                    if (!tickSize.empty()) {
+                        info.tickSize = crypto::fast_atod(tickSize);
+                    }
                 }
                 auto lot = sym["lotSizeFilter"].get_object();
                 if (lot.error() == simdjson::SUCCESS) {
@@ -168,13 +191,29 @@ void BybitInfo::getInfo(const std::string& instType) {
                     lot["minOrderQty"].get(minOrderQty);
                     lot["qtyStep"].get(qtyStep);
                     lot["minNotionalValue"].get(minNotionalValue);
-                    if (!maxOrderQty.empty()) info.maxSize = crypto::fast_atod(maxOrderQty);
-                    info.minSize = crypto::fast_atod(minOrderQty);
-                    info.lotSize = crypto::fast_atod(qtyStep);
-                    info.minAmount = !minNotionalValue.empty()
-                                   ? crypto::fast_atod(minNotionalValue)
-                                   : info.minSize;
+                    if (!maxOrderQty.empty()) {
+                        info.maxSize = crypto::fast_atod(maxOrderQty);
+                    }
+
+                    if (!minOrderQty.empty()) {
+                        info.minSize = crypto::fast_atod(minOrderQty);
+                    }
+                    
+                    if (!qtyStep.empty()) {
+                       info.lotSize = crypto::fast_atod(qtyStep); 
+                    }
+                    
+                    if (!minNotionalValue.empty()) {
+                        info.minAmount = crypto::fast_atod(minNotionalValue)
+                    }
+                    else {
+                        info.minAmount = info.minSize;
+                    }
                 }
+
+                sym["settleCoin"].get(settleCoin_sv);
+                std::string settleCoinUpper = crypto::to_upper(std::string(settleCoin_sv));
+                crypto::copy_sv_to_char_array(info.margin, settleCoinUpper);
             }
 
             updateInstrumentInfo(info);

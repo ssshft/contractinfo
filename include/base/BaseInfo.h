@@ -19,7 +19,6 @@
 class BaseInfo {
 public:
     BaseInfo(RedisClient* client, Config* conf);
-    BaseInfo(Config* conf);
     virtual ~BaseInfo();
 
     void saveData();

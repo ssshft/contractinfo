@@ -10,13 +10,6 @@ BaseInfo::BaseInfo(RedisClient* client, Config* conf) {
     needMagnifyNum = std::stoi(magnifNumStr);
 }
 
-BaseInfo::BaseInfo(Config* conf) {
-    config = conf;
-    std::string magnifNumStr = "";
-    config->get_string("needMagnifyNum", magnifNumStr);
-    needMagnifyNum = std::stoi(magnifNumStr);
-}
-
 BaseInfo::~BaseInfo() {
     // mClients 的 shared_ptr 会依次析构, RestClient::dtor 内会 stop worker + drain pending
 }
@@ -32,7 +25,10 @@ void BaseInfo::saveData() {
         auto& info = iter->second;
         const std::string& redisKey = crypto::get_instrumentInfo_channel_key(ExchangeTypeEnum2StrMap[info.exchangeTypeEnum], InstTypeEnum2StrMap[info.instTypeEnum], info.instId);
         const std::string& infoJsonStr = info.getJsonStr();
-        redisClient->set(redisKey, infoJsonStr);
+        if (redisClient) {
+            redisClient->set(redisKey, infoJsonStr);
+        }
+        
     }
 #endif
 }

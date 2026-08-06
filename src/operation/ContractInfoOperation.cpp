@@ -15,9 +15,11 @@ bool ContractInfoOperation::preStart(Config* config) {
     std::string port = "";
     std::string password = "";
 
+#ifndef USE_INFO_SHM
     if (config->get_redis_config("host", host) && config->get_redis_config("port", port) && config->get_redis_config("password", password)) {
         redisClient = new RedisClient(host.c_str(), std::stoi(port), password.c_str(), true, false);
     }
+#endif
 
     std::vector<std::string> exchVec;
     if (config->get_exchange_list("exchangeList", exchVec)) {
@@ -38,7 +40,6 @@ bool ContractInfoOperation::preStart(Config* config) {
             }
         }
     }
-
 
     if (mExchInfo.size() > 0) {
         return true;
@@ -69,7 +70,9 @@ void ContractInfoOperation::updateExchangeInfo() {
 
         const std::string& allInfoKey = crypto::get_all_instuments_key();
         const std::string& allInfoValue = mapToJsonArray(mAllInfo);
-        redisClient->set(allInfoKey, allInfoValue);
+        if (redisClient) {
+            redisClient->set(allInfoKey, allInfoValue);
+        }
     #endif
         std::this_thread::sleep_for(std::chrono::seconds(60));
     }
