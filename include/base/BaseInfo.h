@@ -5,6 +5,7 @@
 #include "data_struct.h"
 #include "redis_client.h"
 #include "key_util.h"
+#include "precision_util.h"
 #include "BeastRestClient.h"   // 替代 cpprest::http_client (async, keep-alive, TLS 复用)
 
 #ifdef USE_INFO_SHM
