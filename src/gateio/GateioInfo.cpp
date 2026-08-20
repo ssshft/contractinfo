@@ -88,8 +88,8 @@ void GateioInfo::getSpotInfo() {
 
             // Gate 的 precision 是"小数位数", 转换成 tick 值:
             //   precision=8 → tickSize=1e-8
-            info.tickSize = crypto::POW10(precision);
-            info.lotSize = crypto::POW10(amount_precision);
+            info.tickSize = crypto::POW10[precision]
+            info.lotSize = crypto::POW10[amount_precision]
 
             info.minSize = crypto::fast_atod(min_base_amount);
             // info.maxSize = crypto::fast_atod(max_quote_amount);
