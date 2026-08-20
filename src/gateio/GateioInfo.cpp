@@ -59,7 +59,7 @@ void GateioInfo::getSpotInfo() {
             //                → amount_precision → precision → ... → max_base_amount → max_quote_amount
             std::string_view id, base_sv, quote_sv;
             std::string_view min_base_amount, min_quote_amount, max_quote_amount;
-            std::string_view amount_precision, precision;
+            int amount_precision, precision;
 
             pair["id"].get(id);
             pair["base"].get(base_sv);
@@ -88,13 +88,11 @@ void GateioInfo::getSpotInfo() {
 
             // Gate 的 precision 是"小数位数", 转换成 tick 值:
             //   precision=8 → tickSize=1e-8
-            double pxDigits = crypto::fast_atod(precision);
-            double amtDigits = crypto::fast_atod(amount_precision);
-            info.tickSize = std::pow(10.0, -pxDigits);
-            info.lotSize = std::pow(10.0, -amtDigits);
+            info.tickSize = std::pow(10.0, -precision);
+            info.lotSize = std::pow(10.0, -amount_precision);
 
             info.minSize = crypto::fast_atod(min_base_amount);
-            info.maxSize = crypto::fast_atod(max_base_amount);
+            // info.maxSize = crypto::fast_atod(max_quote_amount);
             info.minAmount = crypto::fast_atod(min_quote_amount);
 
             updateInstrumentInfo(info);

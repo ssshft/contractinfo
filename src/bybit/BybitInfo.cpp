@@ -204,7 +204,7 @@ void BybitInfo::getInfo(const std::string& instType) {
                     }
                     
                     if (!minNotionalValue.empty()) {
-                        info.minAmount = crypto::fast_atod(minNotionalValue)
+                        info.minAmount = crypto::fast_atod(minNotionalValue);
                     }
                     else {
                         info.minAmount = info.minSize;
