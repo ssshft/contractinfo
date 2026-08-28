@@ -85,6 +85,7 @@ void GateioInfo::getSpotInfo() {
             info.value = 1;
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
+            info.calcType = 0;
 
             // Gate 的 precision 是"小数位数", 转换成 tick 值:
             //   precision=8 → tickSize=1e-8
@@ -171,9 +172,11 @@ void GateioInfo::getFuturesInfo(std::string settle) {
             info.exchangeTypeEnum = GATEIO;
             if (crypto::str_cmp(settle, "usdt")) {
                 info.instTypeEnum = USDT_SWAP;
+                info.calcType = 0;
             }
             else if (crypto::str_cmp(settle, "btc")) {
                 info.instTypeEnum = C_SWAP;
+                info.calcType = 1;
             }
 
             crypto::copy_sv_to_char_array(info.originInstId, name);
@@ -264,9 +267,11 @@ void GateioInfo::getDeliveryInfo(std::string settle) {
             info.exchangeTypeEnum = GATEIO;
             if (crypto::str_cmp(settle, "usdt")) {
                 info.instTypeEnum = USDT_FUTURES;
+                info.calcType = 0;
             }
             else if (crypto::str_cmp(settle, "btc")) {
                 info.instTypeEnum = C_FUTURES;
+                info.calcType = 1;
             }
 
             crypto::copy_sv_to_char_array(info.originInstId, name);

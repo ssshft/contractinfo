@@ -116,6 +116,7 @@ void OkxInfo::getInfo(const std::string& instType) {
                 crypto::copy_sv_to_char_array(info.margin, quoteCcy);
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
                 info.value = 1;
+                info.calcType = 0;
             }
             else if (isSwap || isFutures) {
                 // OKX 合约 instId 形如 "BTC-USDT-SWAP" / "BTC-USDT-241227", 从中拆出 base/quote
@@ -137,18 +138,22 @@ void OkxInfo::getInfo(const std::string& instType) {
                     fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
                     if (ctType_sv == "linear") {
                         info.instTypeEnum = USDT_SWAP;
+                        info.calcType = 0;
                     }
                     else if (ctType_sv == "inverse") {
                         info.instTypeEnum = C_SWAP;
+                        info.calcType = 1;
                     }
                 } else {
                     // FUTURES: instId 里已经带交割日期, 直接沿用作为 instId 更直观
                     crypto::copy_sv_to_char_array(info.instId, instId_sv);
                     if (ctType_sv == "linear") {
                         info.instTypeEnum = USDT_FUTURES;
+                        info.calcType = 0;
                     }
                     else if (ctType_sv == "inverse") {
                         info.instTypeEnum = C_FUTURES;
+                        info.calcType = 1;
                     }
                 }
             }

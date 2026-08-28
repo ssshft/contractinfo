@@ -169,6 +169,7 @@ void BinanceInfo::getSpotInfo() {
             info.value = 1;
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
+            info.calcType = 0;
 
             // filters 数组 (在对象末尾, JSON 顺序访问符合规则)
             auto filters = sym["filters"].get_array();
@@ -262,15 +263,19 @@ void BinanceInfo::getUFutureInfo() {
                 fmt::format_to(info.instId, "{}-{}", info.base, info.quote);
                 if (crypto::str_cmp(info.margin, "USDT")) {
                     info.instTypeEnum = USDT_SWAP;
+                    info.calcType = 0;
                 }
                 if (crypto::str_cmp(info.margin, "USDC")) {
                     info.instTypeEnum = USDC_SWAP;
+                    info.calcType = 0;
                 }
                 else if (crypto::str_cmp(info.margin, "BUSD")) {
                     info.instTypeEnum = BUSD_SWAP;
+                    info.calcType = 0;
                 }
                 else if (crypto::str_cmp(info.base, info.margin)) {
                     info.instTypeEnum = C_SWAP;
+                    info.calcType = 1;
                 } 
             }
             else if (contractType.find("QUARTER") != std::string_view::npos) {
@@ -280,12 +285,15 @@ void BinanceInfo::getUFutureInfo() {
                 }
                 if (crypto::str_cmp(info.margin, "USDT")) {
                     info.instTypeEnum = USDT_FUTURES;
+                    info.calcType = 0;
                 }
                 else if (crypto::str_cmp(info.margin, "BUSD")) {
-                    info.instTypeEnum = BTC_FUTURES;
+                    info.instTypeEnum = BUSD_FUTURES;
+                    info.calcType = 0;
                 }
                 else if (crypto::str_cmp(info.base, info.margin)) {
                     info.instTypeEnum = C_FUTURES;
+                    info.calcType = 1;
                 }
             }
 

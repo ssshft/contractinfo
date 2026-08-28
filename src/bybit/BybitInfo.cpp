@@ -147,21 +147,27 @@ void BybitInfo::getInfo(const std::string& instType) {
                         info.tickSize = crypto::fast_atod(tickSize);
                     }
                 }
+
+                info.calcType = 0;
             }
             else if (isLinear || isInverse) {
                 bool isFutures = false;
                 if (contractType_sv == "LinearPerpetual") {
                     info.instTypeEnum = USDT_SWAP;
+                    info.calcType = 0;
                 }
                 else if (contractType_sv == "LinearFutures") { 
-                    info.instTypeEnum = USDT_FUTURES; 
+                    info.instTypeEnum = USDT_FUTURES;
+                    info.calcType = 0;
                     isFutures = true; 
                 }
                 else if (contractType_sv == "InversePerpetual") {
                     info.instTypeEnum = C_SWAP;
+                    info.calcType = 1;
                 }
                 else if (contractType_sv == "InverseFutures") {
-                    info.instTypeEnum = C_FUTURES;   
+                    info.instTypeEnum = C_FUTURES;
+                    info.calcType = 1;
                     isFutures = true; 
                 }
 
