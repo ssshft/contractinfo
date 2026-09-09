@@ -407,7 +407,7 @@ void BinanceInfo::getCFutureInfo() {
                     info.instTypeEnum = USDT_FUTURES;
                 }
                 else if (crypto::str_cmp(info.margin, "BUSD")) {
-                    info.instTypeEnum = BTC_FUTURES;
+                    info.instTypeEnum = BUSD_FUTURES;
                 }
                 else if (crypto::str_cmp(info.base, info.margin)) {
                     info.instTypeEnum = C_FUTURES;
