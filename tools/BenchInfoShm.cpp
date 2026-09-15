@@ -32,7 +32,7 @@ namespace {
 using clk = std::chrono::steady_clock;
 using ns  = std::chrono::nanoseconds;
 
-const char* kBenchShmName = "/bts_bench_info_shm";
+const char* kBenchShmName = "/hft_instrument_info";
 
 std::vector<md::InstrumentInfo> make_fake(int n) {
     std::vector<md::InstrumentInfo> v; v.reserve(n);
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     for (int N : {100, 1000, 5000, 10000, 20000}) {
         shm_unlink(shmName.c_str());
         sm::shm::Writer w;
-        if (!w.open(shmName, 32768)) { std::fprintf(stderr, "open failed\n"); return 1; }
+        if (!w.open(shmName, 16384)) { std::fprintf(stderr, "open failed\n"); return 1; }
 
         auto fakes = make_fake(N);
         constexpr int kIters = 200;
