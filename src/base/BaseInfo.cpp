@@ -86,7 +86,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
         cfg.request_queue_capacity = 16;
         cfg.request_pool_size = 8;
         cfg.request_timeout_ms = 30'000;
-        cfg.idle_close_after_ms = 25000;
+        cfg.idle_close_after_ms = 15000;
 
         try {
             auto client = std::make_shared<net::RestClient>(cfg);
@@ -125,7 +125,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
         const bool is_stale = ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset || ec == boost::asio::error::broken_pipe || ec == boost::beast::http::error::end_of_stream;
         if (attempt == 0 && is_stale) {
             LOG_INFO("syncGet {} {} got '{}' (likely stale keep-alive), waiting for RestClient reconnect + retry once", host, target, ec.message());
-            
+            /*
             auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
             while (std::chrono::steady_clock::now() < deadline) {
                 if (it->second->idle_count() > 0) {
@@ -134,6 +134,9 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
+            */
+
+            std::this_thread::sleep_for(std::chrono::seconds(2));
             continue;
         }
  
