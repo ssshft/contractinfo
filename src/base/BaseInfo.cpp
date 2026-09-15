@@ -81,8 +81,8 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
         cfg.port = 443;
         cfg.use_tls = true;
         cfg.verify_peer = false;
-        cfg.max_connections = 1;
-        cfg.parallel_establish_threads = 1;
+        cfg.max_connections = 3;
+        cfg.parallel_establish_threads = 3;
         cfg.request_queue_capacity = 16;
         cfg.request_pool_size = 8;
         cfg.request_timeout_ms = 30'000;
