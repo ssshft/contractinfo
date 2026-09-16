@@ -87,6 +87,7 @@ bool BaseInfo::syncGet(const std::string& host, const std::string& target, std::
         cfg.request_pool_size = 8;
         cfg.request_timeout_ms = 30'000;
         cfg.idle_close_after_ms = 15000;
+        cfg.max_response_body_bytes = 16ull * 1024 * 1024;
 
         try {
             auto client = std::make_shared<net::RestClient>(cfg);
