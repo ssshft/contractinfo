@@ -111,12 +111,12 @@ void OkxInfo::getInfo(const std::string& instType) {
             }
 
             info.lotSize = crypto::fast_atod(lotSz_sv);
-            int d = crypto::countDecimalDigits(lotSz_sv);
-            if (d > 18) {
-                d = 18;
+            int lotD = crypto::countDecimalDigits(lotSz_sv);
+            if (lotD > 18) {
+                lotD = 18;
             }
-            info.sizeDigits = d;
-            info.sizePow10 = crypto::POW10_INT[d];
+            info.sizeDigits = lotD;
+            info.sizePow10 = crypto::POW10_INT[lotD];
             info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
             if (info.lotSizeInt <= 0) {
                 info.lotSizeInt = 1;
