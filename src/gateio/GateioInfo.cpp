@@ -59,7 +59,8 @@ void GateioInfo::getSpotInfo() {
             //                → amount_precision → precision → ... → max_base_amount → max_quote_amount
             std::string_view id, base_sv, quote_sv;
             std::string_view min_base_amount, min_quote_amount, max_quote_amount;
-            int amount_precision, precision;
+            int amount_precision = 0;
+            int precision = 0;
 
             pair["id"].get(id);
             pair["base"].get(base_sv);
@@ -89,12 +90,48 @@ void GateioInfo::getSpotInfo() {
 
             // Gate 的 precision 是"小数位数", 转换成 tick 值:
             //   precision=8 → tickSize=1e-8
-            info.tickSize = crypto::POW10[precision];
-            info.lotSize = crypto::POW10[amount_precision];
+    
+            if (precision < 0) {
+                precision = 0;
+            }
+
+            if (precision > 18) {
+                precision = 18;
+            }
+            info.priceDigits = precision;
+            info.pricePow10 = crypto::POW10_INT[precision];
+            info.tickSizeInt = 1;
+            info.tickSize = 1.0 / static_cast<double>(info.pricePow10);
+
+
+            if (amount_precision < 0) {
+                amount_precision = 0;
+            }
+
+            if (amount_precision > 18) {
+                amount_precision = 18;
+            }
+
+            info.sizeDigits = amount_precision;
+            info.sizePow10  = crypto::POW10_INT[amount_precision];
+            info.lotSizeInt = 1;
+            info.lotSize = 1.0 / static_cast<double>(info.sizePow10);
 
             info.minSize = crypto::fast_atod(min_base_amount);
             // info.maxSize = crypto::fast_atod(max_quote_amount);
             info.minAmount = crypto::fast_atod(min_quote_amount);
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }
 
             updateInstrumentInfo(info);
         }
@@ -187,11 +224,43 @@ void GateioInfo::getFuturesInfo(std::string settle) {
             info.value = crypto::fast_atod(quanto_multiplier);
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
+
             info.tickSize = crypto::fast_atod(order_price_round);
-            info.lotSize = double(order_size_min);
+            int d = countDecimalDigits(order_price_round);
+            if (d > 18) {
+                d = 18;
+            }
+            info.priceDigits = d;
+            info.pricePow10 = crypto::POW10_INT[d];
+            info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+            if (info.tickSizeInt <= 0) {
+                info.tickSizeInt = 1;
+            }
+
+
+            if (order_size_min <= 0) {
+                order_size_min = 1;
+            }
+            info.sizeDigits = 0;
+            info.sizePow10  = 1;
+            info.lotSizeInt = static_cast<int64_t>(order_size_min);
+            info.lotSize = static_cast<double>(order_size_min);
+
             info.minSize = info.lotSize;
             info.maxSize = double(order_size_max);
             info.minAmount = info.lotSize;
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }
 
             updateInstrumentInfo(info);
         }
@@ -286,11 +355,44 @@ void GateioInfo::getDeliveryInfo(std::string settle) {
             info.value = crypto::fast_atod(quanto_multiplier);
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
+
             info.tickSize = crypto::fast_atod(order_price_round);
-            info.lotSize = double(order_size_min);
+            int d = countDecimalDigits(order_price_round);
+            if (d > 18) {
+                d = 18;
+            }
+            info.priceDigits = d;
+            info.pricePow10 = crypto::POW10_INT[d];
+            info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+            if (info.tickSizeInt <= 0) {
+                info.tickSizeInt = 1;
+            }
+
+
+            if (order_size_min <= 0) {
+                order_size_min = 1;
+            }
+            info.sizeDigits = 0;
+            info.sizePow10  = 1;
+            info.lotSizeInt = static_cast<int64_t>(order_size_min);
+            info.lotSize = static_cast<double>(order_size_min);
+
             info.minSize = info.lotSize;
             info.maxSize = double(order_size_max);
             info.minAmount = info.lotSize;
+
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }
 
             updateInstrumentInfo(info);
         }

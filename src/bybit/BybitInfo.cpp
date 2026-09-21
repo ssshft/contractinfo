@@ -125,6 +125,16 @@ void BybitInfo::getInfo(const std::string& instType) {
 
                     if (!basePrecision.empty()) {
                         info.lotSize = crypto::fast_atod(basePrecision);
+                        int d = countDecimalDigits(basePrecision);
+                        if (d > 18) {
+                            d = 18;
+                        }
+                        info.sizeDigits = d;
+                        info.sizePow10  = POW10_INT[d];
+                        info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
+                        if (info.lotSizeInt <= 0) {
+                            info.lotSizeInt = 1;
+                        }
                     }
 
                     if (!minOrderQty.empty()) {
@@ -145,6 +155,16 @@ void BybitInfo::getInfo(const std::string& instType) {
                     price["tickSize"].get(tickSize);
                     if (!tickSize.empty()) {
                         info.tickSize = crypto::fast_atod(tickSize);
+                        int d = countDecimalDigits(tickSize);
+                        if (d > 18) {
+                            d = 18;
+                        }
+                        info.priceDigits = d;
+                        info.pricePow10 = POW10_INT[d];
+                        info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+                        if (info.tickSizeInt <= 0) {
+                            info.tickSizeInt = 1;
+                        }
                     }
                 }
 
@@ -187,6 +207,16 @@ void BybitInfo::getInfo(const std::string& instType) {
                     price["tickSize"].get(tickSize);
                     if (!tickSize.empty()) {
                         info.tickSize = crypto::fast_atod(tickSize);
+                        int d = countDecimalDigits(tickSize);
+                        if (d > 18) {
+                            d = 18;
+                        }
+                        info.priceDigits = d;
+                        info.pricePow10 = POW10_INT[d];
+                        info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+                        if (info.tickSizeInt <= 0) {
+                            info.tickSizeInt = 1;
+                        }
                     }
                 }
                 auto lot = sym["lotSizeFilter"].get_object();
@@ -206,7 +236,17 @@ void BybitInfo::getInfo(const std::string& instType) {
                     }
                     
                     if (!qtyStep.empty()) {
-                       info.lotSize = crypto::fast_atod(qtyStep); 
+                        info.lotSize = crypto::fast_atod(qtyStep);
+                        int d = countDecimalDigits(qtyStep);
+                        if (d > 18) {
+                            d = 18;
+                        }
+                        info.sizeDigits = d;
+                        info.sizePow10  = POW10_INT[d];
+                        info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
+                        if (info.lotSizeInt <= 0) {
+                            info.lotSizeInt = 1;
+                        }
                     }
                     
                     if (!minNotionalValue.empty()) {
@@ -221,6 +261,18 @@ void BybitInfo::getInfo(const std::string& instType) {
                 std::string settleCoinUpper = crypto::to_upper(std::string(settleCoin_sv));
                 crypto::copy_sv_to_char_array(info.margin, settleCoinUpper);
             }
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }  
 
             updateInstrumentInfo(info);
         }

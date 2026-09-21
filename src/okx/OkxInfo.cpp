@@ -97,10 +97,33 @@ void OkxInfo::getInfo(const std::string& instType) {
             info.instIdCode = instIdCode;
 
             crypto::copy_sv_to_char_array(info.originInstId, instId_sv);
-            info.tickSize  = crypto::fast_atod(tickSz_sv);
-            info.lotSize   = crypto::fast_atod(lotSz_sv);
-            info.minSize   = crypto::fast_atod(minSz_sv);
-            info.maxSize   = crypto::fast_atod(maxLmtSz_sv);
+
+            info.tickSize = crypto::fast_atod(tickSz_sv);
+            int d = crypto::countDecimalDigits(tickSz_sv);
+            if (d > 18) {
+                d = 18;
+            }
+            info.priceDigits = d;
+            info.pricePow10 = crypto::POW10_INT[d];
+            info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+            if (info.tickSizeInt <= 0) {
+                info.tickSizeInt = 1;
+            }
+
+            info.lotSize = crypto::fast_atod(lotSz_sv);
+            int d = crypto::countDecimalDigits(lotSz_sv);
+            if (d > 18) {
+                d = 18;
+            }
+            info.sizeDigits = d;
+            info.sizePow10 = crypto::POW10_INT[d];
+            info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
+            if (info.lotSizeInt <= 0) {
+                info.lotSizeInt = 1;
+            }
+
+            info.minSize = crypto::fast_atod(minSz_sv);
+            info.maxSize = crypto::fast_atod(maxLmtSz_sv);
             info.minAmount = info.minSize;
 
             std::string base;
@@ -159,6 +182,18 @@ void OkxInfo::getInfo(const std::string& instType) {
             }
             info.magnifyNumber = magnifyNumber;
             info.reduceNumber = reduceNumber;
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }
 
             updateInstrumentInfo(info);
         }
