@@ -68,7 +68,7 @@ inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo&
                 d = 18;
             }
             info.priceDigits = d;
-            info.pricePow10 = POW10_INT[d];
+            info.pricePow10 = crypto::POW10_INT[d];
             info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
             if (info.tickSizeInt <= 0) {
                 info.tickSizeInt = 1;
@@ -84,7 +84,7 @@ inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo&
                     d = 18;
                 }
                 info.sizeDigits = d;
-                info.sizePow10 = POW10_INT[d];
+                info.sizePow10 = crypto::POW10_INT[d];
                 info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
                 if (info.lotSizeInt <= 0) {
                     info.lotSizeInt = 1;
@@ -98,7 +98,7 @@ inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo&
                     d = 18;
                 }
                 info.sizeDigits = d;
-                info.sizePow10 = POW10_INT[d];
+                info.sizePow10 = crypto::POW10_INT[d];
                 info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
                 if (info.lotSizeInt <= 0) {
                     info.lotSizeInt = 1;
