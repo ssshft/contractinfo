@@ -63,16 +63,46 @@ inline void apply_filter(simdjson::ondemand::object& filter, md::InstrumentInfo&
     if (filterType_sv == "PRICE_FILTER") {
         if (!tickSize_sv.empty()) {
             info.tickSize = crypto::fast_atod(tickSize_sv);
+            int d = crypto::countDecimalDigits(tickSize_sv);
+            if (d > 18) {
+                d = 18;
+            }
+            info.priceDigits = d;
+            info.pricePow10 = POW10_INT[d];
+            info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
+            if (info.tickSizeInt <= 0) {
+                info.tickSizeInt = 1;
+            }
         }
     }
     else if (filterType_sv == "LOT_SIZE") {
         if (isSpot) {
             if (!minQty_sv.empty()) {
                 info.lotSize = crypto::fast_atod(minQty_sv);
+                int d = crypto::countDecimalDigits(minQty_sv);
+                if (d > 18) {
+                    d = 18;
+                }
+                info.sizeDigits = d;
+                info.sizePow10 = POW10_INT[d];
+                info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
+                if (info.lotSizeInt <= 0) {
+                    info.lotSizeInt = 1;
+                }
             }
         } else {
             if (!stepSize_sv.empty()) {
                 info.lotSize = crypto::fast_atod(stepSize_sv);
+                int d = crypto::countDecimalDigits(stepSize_sv);
+                if (d > 18) {
+                    d = 18;
+                }
+                info.sizeDigits = d;
+                info.sizePow10 = POW10_INT[d];
+                info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
+                if (info.lotSizeInt <= 0) {
+                    info.lotSizeInt = 1;
+                }
             }
 
             if (isCFuture) {
@@ -181,6 +211,18 @@ void BinanceInfo::getSpotInfo() {
                     }
                     apply_filter(f.value(), info, /*isSpot=*/true, /*isCFuture=*/false);
                 }
+            }
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
             }
 
             updateInstrumentInfo(info);
@@ -308,6 +350,18 @@ void BinanceInfo::getUFutureInfo() {
                 }
             }
 
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
+            }
+
             updateInstrumentInfo(info);
         }
     }
@@ -423,6 +477,18 @@ void BinanceInfo::getCFutureInfo() {
                     }
                     apply_filter(f.value(), info, /*isSpot=*/false, /*isCFuture=*/true);
                 }
+            }
+
+            if (info.pricePow10 <= 0) { 
+                info.priceDigits = 0; 
+                info.pricePow10 = 1; 
+                info.tickSizeInt = 1; 
+            }
+
+            if (info.sizePow10 <= 0) { 
+                info.sizeDigits = 0; 
+                info.sizePow10 = 1; 
+                info.lotSizeInt = 1; 
             }
 
             updateInstrumentInfo(info);
