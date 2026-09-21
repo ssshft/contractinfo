@@ -226,7 +226,7 @@ void GateioInfo::getFuturesInfo(std::string settle) {
             info.reduceNumber = reduceNumber;
 
             info.tickSize = crypto::fast_atod(order_price_round);
-            int d = countDecimalDigits(order_price_round);
+            int d = crypto::countDecimalDigits(order_price_round);
             if (d > 18) {
                 d = 18;
             }
@@ -357,7 +357,7 @@ void GateioInfo::getDeliveryInfo(std::string settle) {
             info.reduceNumber = reduceNumber;
 
             info.tickSize = crypto::fast_atod(order_price_round);
-            int d = countDecimalDigits(order_price_round);
+            int d = crypto::countDecimalDigits(order_price_round);
             if (d > 18) {
                 d = 18;
             }

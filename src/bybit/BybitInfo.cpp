@@ -125,12 +125,12 @@ void BybitInfo::getInfo(const std::string& instType) {
 
                     if (!basePrecision.empty()) {
                         info.lotSize = crypto::fast_atod(basePrecision);
-                        int d = countDecimalDigits(basePrecision);
+                        int d = crypto::countDecimalDigits(basePrecision);
                         if (d > 18) {
                             d = 18;
                         }
                         info.sizeDigits = d;
-                        info.sizePow10  = POW10_INT[d];
+                        info.sizePow10 = crypto::POW10_INT[d];
                         info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
                         if (info.lotSizeInt <= 0) {
                             info.lotSizeInt = 1;
@@ -155,12 +155,12 @@ void BybitInfo::getInfo(const std::string& instType) {
                     price["tickSize"].get(tickSize);
                     if (!tickSize.empty()) {
                         info.tickSize = crypto::fast_atod(tickSize);
-                        int d = countDecimalDigits(tickSize);
+                        int d = crypto::countDecimalDigits(tickSize);
                         if (d > 18) {
                             d = 18;
                         }
                         info.priceDigits = d;
-                        info.pricePow10 = POW10_INT[d];
+                        info.pricePow10 = crypto::POW10_INT[d];
                         info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
                         if (info.tickSizeInt <= 0) {
                             info.tickSizeInt = 1;
@@ -207,12 +207,12 @@ void BybitInfo::getInfo(const std::string& instType) {
                     price["tickSize"].get(tickSize);
                     if (!tickSize.empty()) {
                         info.tickSize = crypto::fast_atod(tickSize);
-                        int d = countDecimalDigits(tickSize);
+                        int d = crypto::countDecimalDigits(tickSize);
                         if (d > 18) {
                             d = 18;
                         }
                         info.priceDigits = d;
-                        info.pricePow10 = POW10_INT[d];
+                        info.pricePow10 = crypto::POW10_INT[d];
                         info.tickSizeInt = static_cast<int64_t>(std::llround(info.tickSize * static_cast<double>(info.pricePow10)));
                         if (info.tickSizeInt <= 0) {
                             info.tickSizeInt = 1;
@@ -237,12 +237,12 @@ void BybitInfo::getInfo(const std::string& instType) {
                     
                     if (!qtyStep.empty()) {
                         info.lotSize = crypto::fast_atod(qtyStep);
-                        int d = countDecimalDigits(qtyStep);
+                        int d = crypto::countDecimalDigits(qtyStep);
                         if (d > 18) {
                             d = 18;
                         }
                         info.sizeDigits = d;
-                        info.sizePow10  = POW10_INT[d];
+                        info.sizePow10 = crypto::POW10_INT[d];
                         info.lotSizeInt = static_cast<int64_t>(std::llround(info.lotSize * static_cast<double>(info.sizePow10)));
                         if (info.lotSizeInt <= 0) {
                             info.lotSizeInt = 1;
