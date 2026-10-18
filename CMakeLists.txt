@@ -24,6 +24,12 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/binance   DIR_BINANCE_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/okx     DIR_OKX_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/bybit    DIR_BYBIT_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/gateio    DIR_GATEIO_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/htx       DIR_HTX_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/bitget    DIR_BITGET_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/mexc      DIR_MEXC_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/kucoin    DIR_KUCOIN_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/bingx     DIR_BINGX_SRCS)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/xt        DIR_XT_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/operation  DIR_OPERATION_SRCS)
 
 
@@ -55,6 +61,12 @@ add_executable(ContractInfo
         ${DIR_OKX_SRCS}
         ${DIR_BYBIT_SRCS}
         ${DIR_GATEIO_SRCS}
+        ${DIR_HTX_SRCS}
+        ${DIR_BITGET_SRCS}
+        ${DIR_MEXC_SRCS}
+        ${DIR_KUCOIN_SRCS}
+        ${DIR_BINGX_SRCS}
+        ${DIR_XT_SRCS}
         ${DIR_OPERATION_SRCS}
         )
 
