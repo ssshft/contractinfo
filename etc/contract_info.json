@@ -11,5 +11,6 @@
     },
     "exchangeList": ["BINANCE", "GATEIO", "BYBIT", "OKX", "HTX", "BITGET", "MEXC", "KUCOIN", "BINGX", "XT",
                      "BITUNIX", "PHEMEX", "WEEX", "FAMEEX", "BLOFIN", "HOTCOIN", "ECHOBIT", "MGBX"],
-    "needMagnifyNum": 1
+    "needMagnifyNum": 1,
+    "instrumentShmCapacity": 32768
 }
