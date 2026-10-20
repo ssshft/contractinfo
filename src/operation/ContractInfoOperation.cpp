@@ -1,14 +1,5 @@
 #include "operation/ContractInfoOperation.h"
-#include "binance/BinanceInfo.h"
-#include "okx/OkxInfo.h"
-#include "bybit/BybitInfo.h"
-#include "gateio/GateioInfo.h"
-#include "htx/HtxInfo.h"
-#include "bitget/BitgetInfo.h"
-#include "mexc/MexcInfo.h"
-#include "kucoin/KucoinInfo.h"
-#include "bingx/BingxInfo.h"
-#include "xt/XtInfo.h"
+#include "operation/ExchangeInfoFactory.h"
 #include "util/utils.h"
 
 
@@ -30,44 +21,21 @@ bool ContractInfoOperation::preStart(Config* config) {
     std::vector<std::string> exchVec;
     if (config->get_exchange_list("exchangeList", exchVec)) {
         for (size_t i = 0; i < exchVec.size(); ++i) {
-            std::string exchId = exchVec[i];
+            const std::string& exchId = exchVec[i];
 
-            if (crypto::str_cmp(exchId.c_str(), "BINANCE")) {
-                mExchInfo[exchId] = new BinanceInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "OKX")) {
-                mExchInfo[exchId] = new OkxInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "BYBIT")) {
-                mExchInfo[exchId] = new BybitInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "GATEIO")) {
-                mExchInfo[exchId] = new GateioInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "HTX")) {
-                mExchInfo[exchId] = new HtxInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "BITGET")) {
-                mExchInfo[exchId] = new BitgetInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "MEXC")) {
-                mExchInfo[exchId] = new MexcInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "KUCOIN")) {
-                mExchInfo[exchId] = new KucoinInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "BINGX")) {
-                mExchInfo[exchId] = new BingxInfo(redisClient, config);
-            }
-            else if (crypto::str_cmp(exchId.c_str(), "XT")) {
-                mExchInfo[exchId] = new XtInfo(redisClient, config);
+            // 交易所的创建收敛到 exchfac 这一张注册表里, 见
+            // include/operation/ExchangeInfoFactory.h。以前这里是 18 段 if/else,
+            // 加一家所要在生产和每个工具里各改一遍, 两份链必然漂移。
+            BaseInfo* info = exchfac::create(exchId, redisClient, config);
+            if (info) {
+                mExchInfo[exchId] = info;
             }
             else {
                 // ⚠️ 以前这里没有 else: exchangeList 里写错一个名字 (或写了尚未实现的所)
                 // 会被静默忽略, 进程照常跑, 只是那家所一条合约都没有。必须打日志。
+                // 名单从注册表现取, 不再手写 —— 手写的那份必然漏掉最新加的所。
                 LOG_WARN("ContractInfoOperation: unknown exchangeId '{}' in exchangeList, ignored. "
-                         "Implemented: BINANCE/OKX/BYBIT/GATEIO/HTX/BITGET/MEXC/KUCOIN/BINGX/XT",
-                         exchId);
+                         "Implemented: {}", exchId, exchfac::supportedJoined("/"));
             }
         }
     }

@@ -9,6 +9,7 @@
         "port": 9379,
         "password": "refZa2KcTj$QjyXk"
     },
-    "exchangeList": ["BINANCE", "GATEIO", "BYBIT", "OKX", "HTX", "BITGET", "MEXC", "KUCOIN", "BINGX", "XT"],
+    "exchangeList": ["BINANCE", "GATEIO", "BYBIT", "OKX", "HTX", "BITGET", "MEXC", "KUCOIN", "BINGX", "XT",
+                     "BITUNIX", "PHEMEX", "WEEX", "FAMEEX", "BLOFIN", "HOTCOIN", "ECHOBIT", "MGBX"],
     "needMagnifyNum": 1
 }
